@@ -34,7 +34,7 @@ void INS_Task(void)
     lastTime = currentTime;
 
     // ins update
-    mpu6050.update();
+    mpu6050.update(false);
 
     INS.Accel[X] = mpu6050.getAccX() * 9.81f;
     INS.Accel[Y] = mpu6050.getAccY() * 9.81f;
