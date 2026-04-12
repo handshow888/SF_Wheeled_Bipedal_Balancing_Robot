@@ -13,10 +13,10 @@ typedef struct
   float kp;
   float kd;
   float tor;
-  float posMin = -25.12f;
-  float posMax = 25.12f;
-  float velMin = -65.0f;
-  float velMax = 65.0f;
+  float posMin = -12.56f;
+  float posMax = 12.56f;
+  float velMin = -45.0f;
+  float velMax = 45.0f;
   float kpMin = 0.0f;
   float kpMax = 500.0f;
   float kdMin = 0.0f;

@@ -42,7 +42,8 @@ void CANInit();
 void MITState_callback(uint8_t nodeID, uint8_t *data);
 
 void sendCANCommand(uint32_t nodeID, uint32_t msgID, uint8_t *data);
-void recCANMessage();
+// void recCANMessage();
+uint8_t recCANMessage(); // 返回电机id
 
 void sendMITCommand(uint8_t nodeID, MIT command);
 void disable(uint8_t nodeID);     // 电机失能

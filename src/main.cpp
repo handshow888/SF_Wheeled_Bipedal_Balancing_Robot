@@ -25,6 +25,8 @@ MPU6050 mpu6050 = MPU6050(Wire); // 实例化MPU6050
 void IMUTask(void *pvParameters);
 void Open_thread_function(); // 启动线程
 
+void canRecTask();
+
 SemaphoreHandle_t xSerialMutex; // 创建互斥锁句柄
 
 void setup()
@@ -80,6 +82,30 @@ void loop()
   // auto dt = (currentTime - lastTime) * 1.0e-6f;
   // lastTime = currentTime;
   // Serial.printf("currentTime:%d\tdt:%.6f\tfreq:%.3f\n", currentTime, dt, 1.0f / dt);
+  canRecTask();
+}
+
+void canRecTask()
+{
+  uint8_t motorID = recCANMessage();
+  if (motorID != 0xFF)
+  {
+    uint8_t index = motorID - 1;
+    motorStatePackage motorPacket;
+    motorPacket.motorID = motorID;
+    motorPacket.motorPos = devicesState[index].pos;
+    motorPacket.motorVel = devicesState[index].vel;
+    motorPacket.motorTor = devicesState[index].tor;
+
+    Append_CRC16_Check_Sum((uint8_t *)&motorPacket, sizeof(motorStatePackage)); // 计算 CRC
+    // 获取互斥锁
+    if (xSemaphoreTake(xSerialMutex, portMAX_DELAY) == pdTRUE)
+    {
+      Serial.write((uint8_t *)&motorPacket, sizeof(motorStatePackage)); // 发送数据
+      // 释放互斥锁
+      xSemaphoreGive(xSerialMutex);
+    }
+  }
 }
 
 // 启动线程
@@ -110,7 +136,7 @@ void IMUTask(void *pvParameters)
   {
     mpu6050.update(false);
 
-    imuPackage imuPacket;
+    imuStatePackage imuPacket;
 
     imuPacket.ax = mpu6050.getAccX();
     imuPacket.ay = mpu6050.getAccY();
@@ -118,14 +144,14 @@ void IMUTask(void *pvParameters)
     imuPacket.gx = mpu6050.getGyroX();
     imuPacket.gy = mpu6050.getGyroY();
     imuPacket.gz = mpu6050.getGyroZ();
-    Append_CRC16_Check_Sum((uint8_t *)&imuPacket, sizeof(imuPackage)); // 计算 CRC
+    Append_CRC16_Check_Sum((uint8_t *)&imuPacket, sizeof(imuStatePackage)); // 计算 CRC
 
     // --- 串口写入保护 ---
     // 获取互斥锁 (如果另一个任务正在使用串口，此任务会在此处阻塞)
     if (xSemaphoreTake(xSerialMutex, portMAX_DELAY) == pdTRUE)
     {
       // 只有拿到锁的任务才能执行 Serial.write
-      Serial.write((uint8_t *)&imuPacket, sizeof(imuPackage)); // 发送数据
+      Serial.write((uint8_t *)&imuPacket, sizeof(imuStatePackage)); // 发送数据
       // 发送完毕后，立刻释放互斥锁
       xSemaphoreGive(xSerialMutex);
     }

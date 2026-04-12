@@ -28,7 +28,7 @@ void CAN_Control()
 {
   unsigned long currentTime = millis(); // 获取当前时间
 
-  recCANMessage(); // CAN接收函数
+  // recCANMessage(); // CAN接收函数
 
   MITCtrlParam.pos = 0;
   MITCtrlParam.vel = 0;
