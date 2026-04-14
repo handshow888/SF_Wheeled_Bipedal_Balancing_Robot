@@ -12,6 +12,11 @@ extern float motorLeftRear;
 extern float motorRightFront;
 extern float motorLeftFront;
 
+extern float targetTorRightRear;
+extern float targetTorLeftRear;
+extern float targetTorRightFront;
+extern float targetTorLeftFront;
+
 void CAN_Control();
 void startMotor(int motorIndex);
 void enableJointMotors();

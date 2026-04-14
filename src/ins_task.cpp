@@ -2,7 +2,7 @@
 
 INS_t INS;
 
-static unsigned long lastTime = 0; // ms
+static unsigned long lastTime = 0; // us
 static float dt = 0;               // s
 
 const float xb[3] = {1, 0, 0};

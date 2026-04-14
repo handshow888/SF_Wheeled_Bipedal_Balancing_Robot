@@ -20,8 +20,8 @@ extern uint32_t recNum;
 extern MIT devicesState[8];
 
 // Function ID
-#define HEARTBEAT_FUNC_ID 0X700 // 电机➔端 以MIT的格式发送心跳信号
-#define FUNC_ID_NMT 0x000
+#define HEARTBEAT_FUNC_ID 0X780 // 电机➔端 以MIT的格式发送心跳信号
+#define FUNC_ID_NMT 0x000 
 #define FUNC_ID_RPDO1 0x200
 #define FUNC_ID_RPDO2 0x300
 #define FUNC_ID_RPDO3 0x400

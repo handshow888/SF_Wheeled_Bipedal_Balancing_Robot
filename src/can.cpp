@@ -1,6 +1,5 @@
 #include "CAN/can.h"
 
-MIT MITCtrlParam;
 // 左腿关节电机MIT控制
 MIT LeftFronMITCtrlParam;
 MIT LeftRearMITCtrlParam;
@@ -11,7 +10,7 @@ MIT RightRearMITCtrlParam;
 uint32_t prev_ts;
 uint16_t printCount = 0;
 unsigned long lastSendTime = 0; // 记录上次发送时间
-float Am_kp = 1.0;
+float Am_kp = 0.0;
 float motorRightRear;
 float motorLeftRear;
 float motorRightFront;
@@ -30,38 +29,33 @@ void CAN_Control()
 
   // recCANMessage(); // CAN接收函数
 
-  MITCtrlParam.pos = 0;
-  MITCtrlParam.vel = 0;
-  MITCtrlParam.kp = 0;
-  MITCtrlParam.kd = 0;
-  MITCtrlParam.tor = 0;
-  // 左腿关节电机1 控制参数
+  // 左腿关节电机4 控制参数
   LeftFronMITCtrlParam.pos = motorLeftFront;
   LeftFronMITCtrlParam.vel = 0;
   LeftFronMITCtrlParam.kp = Am_kp;
   LeftFronMITCtrlParam.kd = 0;
-  LeftFronMITCtrlParam.tor = 0;
+  LeftFronMITCtrlParam.tor = targetTorLeftFront;
   // 左腿关节电机2 控制参数
   LeftRearMITCtrlParam.pos = motorLeftRear;
   LeftRearMITCtrlParam.vel = 0;
   LeftRearMITCtrlParam.kp = Am_kp;
   LeftRearMITCtrlParam.kd = 0;
-  LeftRearMITCtrlParam.tor = 0;
-  // 右腿关节电机1 控制参数
+  LeftRearMITCtrlParam.tor = targetTorLeftRear;
+  // 右腿关节电机3 控制参数
   RightFronMITCtrlParam.pos = motorRightFront;
   RightFronMITCtrlParam.vel = 0;
   RightFronMITCtrlParam.kp = Am_kp;
   RightFronMITCtrlParam.kd = 0;
-  RightFronMITCtrlParam.tor = 0;
-  // 右腿关节电机2 控制参数
+  RightFronMITCtrlParam.tor = targetTorRightFront;
+  // 右腿关节电机1 控制参数
   RightRearMITCtrlParam.pos = motorRightRear;
   RightRearMITCtrlParam.vel = 0;
   RightRearMITCtrlParam.kp = Am_kp;
   RightRearMITCtrlParam.kd = 0;
-  RightRearMITCtrlParam.tor = 0;
+  RightRearMITCtrlParam.tor = targetTorRightRear;
 
   // 打印关节电机电角度 1 2 3 4
-  Serial.printf("%.2f,%.2f,%.2f,%.2f\n", devicesState[0].pos, devicesState[1].pos, devicesState[2].pos, devicesState[3].pos);
+  // Serial.printf("%.2f,%.2f,%.2f,%.2f\n", devicesState[0].pos, devicesState[1].pos, devicesState[2].pos, devicesState[3].pos);
 
   if (currentTime - lastSendTime >= SEND_INTERVAL)
   {
@@ -104,12 +98,10 @@ void startMotor(int motorIndex)
 
 void enableJointMotors()
 {
-  static int motorIndex = 0; // 当前启动的电机索引
-  for (int i = 1; i <= 5; ++i)
+  for (int i = 1; i <= 4; ++i)
   {
     Serial.println("...");
-    startMotor(motorIndex); // 启动当前索引的电机
-    ++motorIndex;           // 准备启动下一个电机
+    startMotor(i); // 启动当前索引的电机
     delay(100);
   }
 }

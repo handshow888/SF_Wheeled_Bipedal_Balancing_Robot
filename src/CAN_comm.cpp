@@ -64,6 +64,11 @@ uint8_t recCANMessage()
                 uint8_t nodeID = rxFrame.identifier & 0x7F;
                 uint32_t funcID = rxFrame.identifier & 0x0780;
                 // Serial.printf("%x,%x,%x,%x\n",DLC,nodeID,funcID,rxFrame.identifier);
+                // for (int i=0;i<8;++i)
+                // {
+                //     Serial.printf("%x,", rxFrame.data[i]);
+                // }
+                // Serial.printf("\n");
                 if (funcID == HEARTBEAT_FUNC_ID)
                 {
                     MITState_callback(nodeID, rxFrame.data);
@@ -109,7 +114,7 @@ void sendCANCommand(uint32_t nodeID, uint32_t msgID, uint8_t *data)
     txFrame.rtr = false;                 // 数据帧
     txFrame.identifier = msgID + nodeID; // 帧ID
     txFrame.data_length_code = 8;        // DLC
-    for (int i = 0; i < 8; i++)
+    for (int i = 0; i < 8; ++i)
     {
         txFrame.data[i] = data[i];
     }
@@ -118,7 +123,7 @@ void sendCANCommand(uint32_t nodeID, uint32_t msgID, uint8_t *data)
     if (twai_transmit(&txFrame, pdMS_TO_TICKS(1000)) == ESP_OK)
     {
         // printf("Message queued for transmission\n");
-        sendNum++;
+        ++sendNum;
     }
     else
     {
@@ -197,7 +202,7 @@ void disable(uint8_t nodeID)
     MITcommand[6] = 0xFF;
     MITcommand[7] = 0xFD;
     // Serial.printf("disable ID %hhu\n",nodeID);
-    sendCANCommand(nodeID, FUNC_ID_RPDO1, MITcommand);
+    sendCANCommand(nodeID, FUNC_ID_NMT, MITcommand);
 }
 
 void enableMotor(uint8_t nodeID)
@@ -212,7 +217,7 @@ void enableMotor(uint8_t nodeID)
     MITcommand[6] = 0xFF;
     MITcommand[7] = 0xFC;
     // Serial.printf("enableMotor ID %hhu\n",nodeID);
-    sendCANCommand(nodeID, FUNC_ID_RPDO1, MITcommand);
+    sendCANCommand(nodeID, FUNC_ID_NMT, MITcommand);
 }
 
 void zeroPos(uint8_t nodeID)
@@ -226,5 +231,5 @@ void zeroPos(uint8_t nodeID)
     MITcommand[5] = 0xFF;
     MITcommand[6] = 0xFF;
     MITcommand[7] = 0xFE;
-    sendCANCommand(nodeID, FUNC_ID_RPDO1, MITcommand);
+    sendCANCommand(nodeID, FUNC_ID_NMT, MITcommand);
 }
