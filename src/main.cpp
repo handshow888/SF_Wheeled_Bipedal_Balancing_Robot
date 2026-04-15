@@ -25,6 +25,10 @@ MPU6050 mpu6050 = MPU6050(Wire); // 实例化MPU6050
 SemaphoreHandle_t xSerialMutex;  // 创建互斥锁句柄
 QueueHandle_t xCommandQueue;     // 全局队列句柄
 
+// 控制loop函数周期
+TickType_t xLastWakeTime_loop;
+const TickType_t xPeriod_loop = pdMS_TO_TICKS(1);
+
 float targetTorRightRear;
 float targetTorLeftRear;
 float targetTorRightFront;
@@ -39,6 +43,7 @@ void Open_thread_function(); // 启动线程
 void sendWheelsState();      // 发送轮毂电机状态到串口
 void handleRecCmd();         // 处理接收到的上位机指令
 bool isCmdRec();             // 检测上位机是否在线
+void emergencyStopCheck();   // 检查遥控器无力开关
 
 /**********************************************************************************************************/
 void setup()
@@ -58,7 +63,9 @@ void setup()
   // 创建命令队列，长度可容纳 20 个包（避免消费不及时丢失）
   xCommandQueue = xQueueCreate(20, sizeof(SerialCommandPackage));
 
-  Open_thread_function(); // 启动线程
+  Open_thread_function(); // 启动多线程任务
+
+  xLastWakeTime_loop = xTaskGetTickCount();
 
   // delay(3000);
   /* USER CALIBRATE IMU START */
@@ -74,16 +81,17 @@ void loop()
 {
   storeFilteredPPMData(); // 获取遥控器数据
   remoteSwitch();         // 获取遥控器模式
-  mapPPMToRobotControl(); // 映射遥控器各通道数值为控制指令
+  // mapPPMToRobotControl(); // 映射遥控器各通道数值为控制指令
 
   sendWheelsState(); // 发送轮毂电机状态到串口
 
-  handleRecCmd();                                            // 非阻塞处理接收到的命令
-  isCmdRec();                                                // 检测上位机是否在线
+  handleRecCmd(); // 非阻塞处理接收到的命令
+  isCmdRec();     // 检测上位机是否在线
+  emergencyStopCheck();
   CAN_Control();                                             // 控制关节电机
-  sendMotorTargets(targetTorLeftWheel, targetTorRightWheel); // 发送控制轮毂电机的目标值
+  sendMotorTargets(targetTorRightWheel, targetTorLeftWheel); // 发送控制轮毂电机的目标值
   // Serial.printf("v1:%.3f\tv2:%.3f\n", motor1_vel, motor2_vel);
-  vTaskDelay(pdMS_TO_TICKS(1)); // 避免空转
+  vTaskDelayUntil(&xLastWakeTime_loop, xPeriod_loop); // 周期控制
 }
 
 /**********************************************************************************************************/
@@ -105,9 +113,9 @@ void Open_thread_function()
       "canRecTask",
       4096,
       NULL,
-      6,
+      5,
       NULL,
-      0);
+      1);
 
   xTaskCreatePinnedToCore(
       serialRecTask,   // 任务函数
@@ -116,7 +124,7 @@ void Open_thread_function()
       NULL,            // 参数
       5,               // 优先级
       NULL,            // 句柄
-      1                // 运行在核心 1
+      0                // 运行在核心 1
   );
 }
 
@@ -161,12 +169,12 @@ void handleRecCmd()
       targetTorRightWheel = 0.0;
       break;
     case 1:
-      targetTorRightRear = cmd.motors_effort[1];
-      targetTorLeftRear = cmd.motors_effort[2];
-      targetTorRightFront = cmd.motors_effort[3];
-      targetTorLeftFront = cmd.motors_effort[4];
-      targetTorLeftWheel = cmd.motors_effort[5];
-      targetTorRightWheel = cmd.motors_effort[6];
+      targetTorRightRear = cmd.motors_effort[0];
+      targetTorLeftRear = cmd.motors_effort[1];
+      targetTorRightFront = cmd.motors_effort[2];
+      targetTorLeftFront = cmd.motors_effort[3];
+      targetTorLeftWheel = cmd.motors_effort[4];
+      targetTorRightWheel = cmd.motors_effort[5];
       break;
     default:
       break;
@@ -174,12 +182,12 @@ void handleRecCmd()
 
     /* 以下是测试代码 */
     // sendTestPackage packet;
-    // packet.aaa = cmd.aaa;
+    // memcpy(packet.motors_effort, cmd.motors_effort, 6 * sizeof(float));
 
     // Append_CRC16_Check_Sum((uint8_t *)&packet, sizeof(sendTestPackage)); // 计算 CRC
     // if (xSemaphoreTake(xSerialMutex, portMAX_DELAY) == pdTRUE)
     // {
-    //   // Serial.write((uint8_t *)&packet, sizeof(sendTestPackage)); // 发送数据
+    //   Serial.write((uint8_t *)&packet, sizeof(sendTestPackage)); // 发送数据
     //   xSemaphoreGive(xSerialMutex);
     // }
   }
@@ -200,4 +208,17 @@ bool isCmdRec()
     return false;
   }
   return true;
+}
+
+void emergencyStopCheck()
+{
+  if (!enableHubMotor)
+  {
+    targetTorRightRear = 0.0;
+    targetTorLeftRear = 0.0;
+    targetTorRightFront = 0.0;
+    targetTorLeftFront = 0.0;
+    targetTorLeftWheel = 0.0;
+    targetTorRightWheel = 0.0;
+  }
 }

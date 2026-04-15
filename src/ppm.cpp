@@ -84,7 +84,7 @@ void remoteSwitch()
     default:
         break;
     }
-
+    return; /////////////////////////////////////////////////////
     /***** 左拨杆 *****/
     // switch (getSwitchPos(PPM_SWITCH_LEFT))
     // {

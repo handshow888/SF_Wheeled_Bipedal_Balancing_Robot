@@ -5,9 +5,7 @@ void IMUTask(void *pvParameters)
 {
     TickType_t xLastWakeTime;
     const TickType_t xPeriod = pdMS_TO_TICKS(1); // 将 1ms 转换为 Tick 数 (即 1 个 Tick)
-
-    // 初始化“上次唤醒时间”为当前时间
-    xLastWakeTime = xTaskGetTickCount();
+    xLastWakeTime = xTaskGetTickCount();         // 初始化“上次唤醒时间”为当前时间
 
     while (true)
     {
@@ -46,6 +44,9 @@ void IMUTask(void *pvParameters)
 
 void canRecTask(void *pvParameters)
 {
+    TickType_t xLastWakeTime;
+    const TickType_t xPeriod = pdMS_TO_TICKS(1); // 将 1ms 转换为 Tick 数 (即 1 个 Tick)
+    xLastWakeTime = xTaskGetTickCount();         // 初始化“上次唤醒时间”为当前时间
     while (true)
     {
         uint8_t motorID = recCANMessage();
@@ -67,6 +68,7 @@ void canRecTask(void *pvParameters)
                 xSemaphoreGive(xSerialMutex);
             }
         }
+        vTaskDelayUntil(&xLastWakeTime, xPeriod);
     }
 }
 
