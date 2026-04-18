@@ -22,8 +22,10 @@
 #include "tasks/data_bridge_tasks.h"
 /**********************************************************************************************************/
 MPU6050 mpu6050 = MPU6050(Wire); // 实例化MPU6050
-SemaphoreHandle_t xSerialMutex;  // 创建互斥锁句柄
-QueueHandle_t xCommandQueue;     // 全局队列句柄
+SemaphoreHandle_t xSerialMutex;  // 串口发送互斥锁
+SemaphoreHandle_t xCommandMutex;  // 命令更新互斥锁
+SerialCommandPackage latestCommand; // 最新接收到的命令
+unsigned long lastRecCmdTime = 0; // ms
 
 // 控制loop函数周期
 TickType_t xLastWakeTime_loop;
@@ -35,8 +37,6 @@ float targetTorRightFront;
 float targetTorLeftFront;
 float targetTorLeftWheel;
 float targetTorRightWheel;
-
-unsigned long lastRecCmdTime = 0; // ms
 
 /**********************************************************************************************************/
 void Open_thread_function(); // 启动线程
@@ -60,8 +60,7 @@ void setup()
 
   // 创建互斥锁
   xSerialMutex = xSemaphoreCreateMutex();
-  // 创建命令队列，长度可容纳 20 个包（避免消费不及时丢失）
-  xCommandQueue = xQueueCreate(20, sizeof(SerialCommandPackage));
+  xCommandMutex = xSemaphoreCreateMutex();
 
   Open_thread_function(); // 启动多线程任务
 
@@ -124,7 +123,7 @@ void Open_thread_function()
       NULL,            // 参数
       5,               // 优先级
       NULL,            // 句柄
-      0                // 运行在核心 1
+      0                // 运行在核心 0
   );
 }
 
@@ -153,11 +152,13 @@ void sendWheelsState()
 
 void handleRecCmd()
 {
-  SerialCommandPackage cmd;
-  while (xQueueReceive(xCommandQueue, &cmd, 0) == pdTRUE)
+  // if (lastRecCmdTime == 0)
+  //   return;
+  if (xSemaphoreTake(xCommandMutex, 0) == pdTRUE)
   {
-    lastRecCmdTime = millis();
-    // 根据 cmd 执行相应操作
+    SerialCommandPackage cmd = latestCommand;
+    xSemaphoreGive(xCommandMutex);
+
     switch (enableHubMotor)
     {
     case 0:
@@ -179,7 +180,6 @@ void handleRecCmd()
     default:
       break;
     }
-
     /* 以下是测试代码 */
     // sendTestPackage packet;
     // memcpy(packet.motors_effort, cmd.motors_effort, 6 * sizeof(float));
@@ -196,8 +196,8 @@ void handleRecCmd()
 bool isCmdRec()
 {
   auto currentTime = millis();
-  int dt = currentTime - lastTime; // ms
-  if (dt > 1000)                   // 超过1s没收到指令则认为上位机离线
+  int dt = currentTime - lastRecCmdTime; // ms
+  if (dt > 1000)                         // 超过1s没收到指令则认为上位机离线
   {
     targetTorRightRear = 0.0;
     targetTorLeftRear = 0.0;

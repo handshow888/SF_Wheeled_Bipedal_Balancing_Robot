@@ -34,11 +34,12 @@ typedef struct
 typedef struct
 {
     uint8_t header = 0xA5;
+    uint8_t control_mode = 0;       // 0:力控    1:关节电机位控
     float motors_effort[6] = {0.0}; // 按照电机ID:RR LR RF LF LW RW
     uint16_t crc16 = 0xFFFF;
 } __attribute__((packed)) SerialCommandPackage;
 
 #define SERIAL_PACKET_SIZE sizeof(SerialCommandPackage)
-#define SERIAL_RING_BUFFER_SIZE (SERIAL_PACKET_SIZE * 10) // 环形缓冲区大小，可容纳10个包
+#define SERIAL_RING_BUFFER_SIZE (SERIAL_PACKET_SIZE * 3) // 环形缓冲区大小，可容纳3个包
 
 #endif

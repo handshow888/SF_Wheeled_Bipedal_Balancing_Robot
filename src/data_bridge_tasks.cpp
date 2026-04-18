@@ -45,8 +45,8 @@ void IMUTask(void *pvParameters)
 void canRecTask(void *pvParameters)
 {
     TickType_t xLastWakeTime;
-    const TickType_t xPeriod = pdMS_TO_TICKS(1); // 将 1ms 转换为 Tick 数 (即 1 个 Tick)
-    xLastWakeTime = xTaskGetTickCount();         // 初始化“上次唤醒时间”为当前时间
+    const TickType_t xPeriod = pdMS_TO_TICKS(1); // 1ms = 1 个 Tick)
+    xLastWakeTime = xTaskGetTickCount();           // 初始化“上次唤醒时间”为当前时间
     while (true)
     {
         uint8_t motorID = recCANMessage();
@@ -67,8 +67,8 @@ void canRecTask(void *pvParameters)
                 // 释放互斥锁
                 xSemaphoreGive(xSerialMutex);
             }
+            vTaskDelayUntil(&xLastWakeTime, xPeriod);
         }
-        vTaskDelayUntil(&xLastWakeTime, xPeriod);
     }
 }
 
@@ -82,12 +82,17 @@ static size_t rxCount = 0;
 void ringBufferWrite(uint8_t data)
 {
     size_t nextHead = (rxHead + 1) % SERIAL_RING_BUFFER_SIZE;
-    if (nextHead != rxTail)
-    { // 未满
+    if (nextHead != rxTail)  // 未满
+    {
         rxRingBuffer[rxHead] = data;
         rxHead = nextHead;
     }
-    // 如果满了，丢弃新数据（避免覆盖未处理数据）
+    else  // 满了，丢弃旧数据（保留新数据）
+    {
+        rxRingBuffer[rxHead] = data;
+        rxHead = nextHead;
+        rxTail = (rxTail + 1) % SERIAL_RING_BUFFER_SIZE;  // 移动尾指针，丢弃最旧的数据
+    }
 }
 
 // 从环形缓冲区读取一个字节（消费者：解析任务），返回读取成功与否
@@ -120,8 +125,9 @@ void serialRecTask(void *pvParameters)
                       READ_PACKET } state = WAIT_HEADER;
         static uint8_t packetBuffer[SERIAL_PACKET_SIZE];
         static size_t packetIndex = 0;
+        int packetsProcessed = 0;
 
-        while (ringBufferRead(&byte))
+        while (ringBufferRead(&byte) && packetsProcessed < MAX_PACKETS_PER_LOOP)
         {
             switch (state)
             {
@@ -140,9 +146,15 @@ void serialRecTask(void *pvParameters)
                     SerialCommandPackage *pkt = (SerialCommandPackage *)packetBuffer;
                     if (Verify_CRC16_Check_Sum((uint8_t *)pkt, SERIAL_PACKET_SIZE))
                     {
-                        xQueueSend(xCommandQueue, pkt, 0);
+                        lastRecCmdTime = millis();
+                        if (xSemaphoreTake(xCommandMutex, 0) == pdTRUE)
+                        {
+                            latestCommand = *pkt;
+                            xSemaphoreGive(xCommandMutex);
+                        }
                     }
                     state = WAIT_HEADER;
+                    ++packetsProcessed;
                 }
                 break;
             }
