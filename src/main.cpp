@@ -20,12 +20,13 @@
 #include "crc16.h"
 #include "serialPackages.h"
 #include "tasks/data_bridge_tasks.h"
+#include "tasks/other_tasks.h"
 /**********************************************************************************************************/
-MPU6050 mpu6050 = MPU6050(Wire); // 实例化MPU6050
-SemaphoreHandle_t xSerialMutex;  // 串口发送互斥锁
-SemaphoreHandle_t xCommandMutex;  // 命令更新互斥锁
+MPU6050 mpu6050 = MPU6050(Wire);    // 实例化MPU6050
+SemaphoreHandle_t xSerialMutex;     // 串口发送互斥锁
+SemaphoreHandle_t xCommandMutex;    // 命令更新互斥锁
 SerialCommandPackage latestCommand; // 最新接收到的命令
-unsigned long lastRecCmdTime = 0; // ms
+unsigned long lastRecCmdTime = 0;   // ms
 
 // 控制loop函数周期
 TickType_t xLastWakeTime_loop;
@@ -37,6 +38,8 @@ float targetTorRightFront;
 float targetTorLeftFront;
 float targetTorLeftWheel;
 float targetTorRightWheel;
+
+bool isJointMotorOn = false;
 
 /**********************************************************************************************************/
 void Open_thread_function(); // 启动线程
@@ -87,7 +90,7 @@ void loop()
   handleRecCmd(); // 非阻塞处理接收到的命令
   isCmdRec();     // 检测上位机是否在线
   emergencyStopCheck();
-  CAN_Control();                                             // 控制关节电机
+  // CAN_Control();                                             // 控制关节电机
   sendMotorTargets(targetTorRightWheel, targetTorLeftWheel); // 发送控制轮毂电机的目标值
   // Serial.printf("v1:%.3f\tv2:%.3f\n", motor1_vel, motor2_vel);
   vTaskDelayUntil(&xLastWakeTime_loop, xPeriod_loop); // 周期控制
@@ -107,14 +110,14 @@ void Open_thread_function()
       1          // 运行在核心 1
   );
 
-  xTaskCreatePinnedToCore(
-      canRecTask,
-      "canRecTask",
-      4096,
-      NULL,
-      5,
-      NULL,
-      1);
+  // xTaskCreatePinnedToCore(
+  //     canRecTask,
+  //     "canRecTask",
+  //     4096,
+  //     NULL,
+  //     5,
+  //     NULL,
+  //     1);
 
   xTaskCreatePinnedToCore(
       serialRecTask,   // 任务函数
@@ -125,6 +128,15 @@ void Open_thread_function()
       NULL,            // 句柄
       0                // 运行在核心 0
   );
+
+  xTaskCreatePinnedToCore(
+      can_rx_task,
+      "can_rx_task",
+      1024,
+      NULL,
+      1,
+      NULL,
+      1);
 }
 
 void sendWheelsState()
@@ -162,34 +174,24 @@ void handleRecCmd()
     switch (enableHubMotor)
     {
     case 0:
-      targetTorRightRear = 0.0;
-      targetTorLeftRear = 0.0;
-      targetTorRightFront = 0.0;
-      targetTorLeftFront = 0.0;
+      // targetTorRightRear = 0.0;
+      // targetTorLeftRear = 0.0;
+      // targetTorRightFront = 0.0;
+      // targetTorLeftFront = 0.0;
       targetTorLeftWheel = 0.0;
       targetTorRightWheel = 0.0;
       break;
     case 1:
-      targetTorRightRear = cmd.motors_effort[0];
-      targetTorLeftRear = cmd.motors_effort[1];
-      targetTorRightFront = cmd.motors_effort[2];
-      targetTorLeftFront = cmd.motors_effort[3];
-      targetTorLeftWheel = cmd.motors_effort[4];
-      targetTorRightWheel = cmd.motors_effort[5];
+      // targetTorRightRear = cmd.motors_effort[0];
+      // targetTorLeftRear = cmd.motors_effort[1];
+      // targetTorRightFront = cmd.motors_effort[2];
+      // targetTorLeftFront = cmd.motors_effort[3];
+      targetTorLeftWheel = cmd.motors_effort[0];
+      targetTorRightWheel = cmd.motors_effort[1];
       break;
     default:
       break;
     }
-    /* 以下是测试代码 */
-    // sendTestPackage packet;
-    // memcpy(packet.motors_effort, cmd.motors_effort, 6 * sizeof(float));
-
-    // Append_CRC16_Check_Sum((uint8_t *)&packet, sizeof(sendTestPackage)); // 计算 CRC
-    // if (xSemaphoreTake(xSerialMutex, portMAX_DELAY) == pdTRUE)
-    // {
-    //   Serial.write((uint8_t *)&packet, sizeof(sendTestPackage)); // 发送数据
-    //   xSemaphoreGive(xSerialMutex);
-    // }
   }
 }
 
@@ -199,10 +201,10 @@ bool isCmdRec()
   int dt = currentTime - lastRecCmdTime; // ms
   if (dt > 1000)                         // 超过1s没收到指令则认为上位机离线
   {
-    targetTorRightRear = 0.0;
-    targetTorLeftRear = 0.0;
-    targetTorRightFront = 0.0;
-    targetTorLeftFront = 0.0;
+    // targetTorRightRear = 0.0;
+    // targetTorLeftRear = 0.0;
+    // targetTorRightFront = 0.0;
+    // targetTorLeftFront = 0.0;
     targetTorLeftWheel = 0.0;
     targetTorRightWheel = 0.0;
     return false;
@@ -220,5 +222,23 @@ void emergencyStopCheck()
     targetTorLeftFront = 0.0;
     targetTorLeftWheel = 0.0;
     targetTorRightWheel = 0.0;
+    if (isJointMotorOn)
+      disableJointMotors();
+  }
+  else
+  {
+    if (!isJointMotorOn)
+      enableJointMotors();
+    // targetTorLeftFront = 1.0;
+    // CAN_Control();
+  }
+
+  motorSwitchPackage packet;
+  packet.jointMotorState = (uint8_t)isJointMotorOn;
+  Append_CRC16_Check_Sum((uint8_t *)&packet, sizeof(motorSwitchPackage)); // 计算 CRC
+  if (xSemaphoreTake(xSerialMutex, portMAX_DELAY) == pdTRUE)
+  {
+    Serial.write((uint8_t *)&packet, sizeof(motorSwitchPackage)); // 发送数据
+    xSemaphoreGive(xSerialMutex);
   }
 }

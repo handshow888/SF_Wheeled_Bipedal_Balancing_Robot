@@ -2,6 +2,7 @@
 #define SERIAL_PACKAGES_H
 #include <cstdint>
 
+/***************************************************** send *****************************************************/
 typedef struct
 {
     uint8_t header = 0x5A;
@@ -17,25 +18,26 @@ typedef struct
 typedef struct
 {
     uint8_t header = 0x5B;
-    uint8_t motorID;
-    float motorPos; // rad [-4pi, 4pi]
+    uint8_t motorID; // 左轮5 右轮6
+    // float motorPos; // rad [-4pi, 4pi]
     float motorVel; // rad/s [-45.0, 45.0]
-    float motorTor; // Nm
+    // float motorTor; // Nm
     uint16_t crc16 = 0xFFFF;
 } __attribute__((packed)) motorStatePackage;
 
 typedef struct
 {
     uint8_t header = 0x5C;
-    float motors_effort[6] = {0.0};
+    uint8_t jointMotorState = 0; // 0失能 1使能
     uint16_t crc16 = 0xFFFF;
-} __attribute__((packed)) sendTestPackage;
+} __attribute__((packed)) motorSwitchPackage;
+
+/***************************************************** recived *****************************************************/
 
 typedef struct
 {
     uint8_t header = 0xA5;
-    uint8_t control_mode = 0;       // 0:力控    1:关节电机位控
-    float motors_effort[6] = {0.0}; // 按照电机ID:RR LR RF LF LW RW
+    float motors_effort[2] = {0.0}; // LW RW
     uint16_t crc16 = 0xFFFF;
 } __attribute__((packed)) SerialCommandPackage;
 

@@ -17,9 +17,12 @@ extern float targetTorLeftRear;
 extern float targetTorRightFront;
 extern float targetTorLeftFront;
 
+extern bool isJointMotorOn;
+
 void CAN_Control();
 void startMotor(int motorIndex);
 void enableJointMotors();
+void disableJointMotors();
 void mapJointMotorAngle();
 
 #endif

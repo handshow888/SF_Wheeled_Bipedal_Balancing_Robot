@@ -96,12 +96,36 @@ void startMotor(int motorIndex)
   Serial.printf("Sent enable cmd to Motor %d\n", motorIndex);
 }
 
+void stopMotor(int motorIndex)
+{
+  disableMotor((uint8_t)motorIndex);
+  Serial.printf("Sent disable cmd to Motor %d\n", motorIndex);
+}
+
 void enableJointMotors()
 {
   for (int i = 1; i <= 4; ++i)
   {
+    unsigned long callTime = millis();
     Serial.println("...");
     startMotor(i); // 启动当前索引的电机
-    delay(100);
+    // while (millis() - callTime < 100)
+    // {
+    // }
   }
+  isJointMotorOn = true;
+}
+
+void disableJointMotors()
+{
+  for (int i = 1; i <= 4; ++i)
+  {
+    unsigned long callTime = millis();
+    Serial.println("...");
+    stopMotor(i); // 启动当前索引的电机
+    // while (millis() - callTime < 100)
+    // {
+    // }
+  }
+  isJointMotorOn = false;
 }

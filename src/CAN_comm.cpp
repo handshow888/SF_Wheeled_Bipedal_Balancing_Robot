@@ -14,7 +14,20 @@ void CANInit()
     // ESP32Can.CANInit();
     twai_general_config_t g_config = TWAI_GENERAL_CONFIG_DEFAULT(GPIO_NUM_35, GPIO_NUM_41, TWAI_MODE_NORMAL); // 配置TX RX引脚
     twai_timing_config_t t_config = TWAI_TIMING_CONFIG_1MBITS();                                              // 配置波特率
-    twai_filter_config_t f_config = TWAI_FILTER_CONFIG_ACCEPT_ALL();                                          // 配置滤波器 todo 增加滤波器
+    // twai_filter_config_t f_config = TWAI_FILTER_CONFIG_ACCEPT_ALL();                                          // 配置滤波器 todo 增加滤波器
+  
+    // 目标：只接收 0x781, 0x782, 0x783, 0x784 (电机数据)
+    // 屏蔽：0x201, 0x202, 0x203, 0x204 (上位机数据)
+    twai_filter_config_t f_config;
+    f_config.single_filter = true; // 使用单过滤器模式以获得最高精度
+
+    // 验收码：匹配前缀 0x780
+    f_config.acceptance_code = (0x780 << 21);
+
+    // 验收掩码：
+    // 0 表示“必须匹配”，1 表示“可以忽略”
+    // 我们要求前 7 位必须是 0x78 (0111 1000)，最后 4 位（0x0-0xF）随意
+    f_config.acceptance_mask = (0x00F << 21) | 0x1FFFFF;
 
     // Install TWAI driver
     if (twai_driver_install(&g_config, &t_config, &f_config) == ESP_OK)
@@ -120,7 +133,7 @@ void sendCANCommand(uint32_t nodeID, uint32_t msgID, uint8_t *data)
     }
     // Queue message for transmission
     // 超时时间为1ms，pdMS_TO_TICKS(1000)
-    if (twai_transmit(&txFrame, pdMS_TO_TICKS(1000)) == ESP_OK)
+    if (twai_transmit(&txFrame, pdMS_TO_TICKS(1)) == ESP_OK)
     {
         // printf("Message queued for transmission\n");
         ++sendNum;
@@ -190,7 +203,7 @@ uint16_t float_to_uint(float x, float x_min, float x_max, uint8_t bits)
     return (uint16_t)((x - offset) * ((float)((1 << bits) - 1)) / span);
 }
 
-void disable(uint8_t nodeID)
+void disableMotor(uint8_t nodeID)
 {
     uint8_t MITcommand[8];
     MITcommand[0] = 0xFF;

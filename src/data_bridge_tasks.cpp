@@ -42,35 +42,35 @@ void IMUTask(void *pvParameters)
     }
 }
 
-void canRecTask(void *pvParameters)
-{
-    TickType_t xLastWakeTime;
-    const TickType_t xPeriod = pdMS_TO_TICKS(1); // 1ms = 1 个 Tick)
-    xLastWakeTime = xTaskGetTickCount();           // 初始化“上次唤醒时间”为当前时间
-    while (true)
-    {
-        uint8_t motorID = recCANMessage();
-        if (motorID != 0xFF)
-        {
-            uint8_t index = motorID - 1;
-            motorStatePackage motorPacket;
-            motorPacket.motorID = motorID;
-            motorPacket.motorPos = devicesState[index].pos;
-            motorPacket.motorVel = devicesState[index].vel;
-            motorPacket.motorTor = devicesState[index].tor;
+// void canRecTask(void *pvParameters)
+// {
+//     TickType_t xLastWakeTime;
+//     const TickType_t xPeriod = pdMS_TO_TICKS(1); // 1ms = 1 个 Tick)
+//     xLastWakeTime = xTaskGetTickCount();         // 初始化“上次唤醒时间”为当前时间
+//     while (true)
+//     {
+//         uint8_t motorID = recCANMessage();
+//         if (motorID != 0xFF)
+//         {
+//             uint8_t index = motorID - 1;
+//             motorStatePackage motorPacket;
+//             motorPacket.motorID = motorID;
+//             motorPacket.motorPos = devicesState[index].pos;
+//             motorPacket.motorVel = devicesState[index].vel;
+//             motorPacket.motorTor = devicesState[index].tor;
 
-            Append_CRC16_Check_Sum((uint8_t *)&motorPacket, sizeof(motorStatePackage)); // 计算 CRC
-            // 获取互斥锁
-            if (xSemaphoreTake(xSerialMutex, portMAX_DELAY) == pdTRUE)
-            {
-                Serial.write((uint8_t *)&motorPacket, sizeof(motorStatePackage)); // 发送数据
-                // 释放互斥锁
-                xSemaphoreGive(xSerialMutex);
-            }
-            vTaskDelayUntil(&xLastWakeTime, xPeriod);
-        }
-    }
-}
+//             Append_CRC16_Check_Sum((uint8_t *)&motorPacket, sizeof(motorStatePackage)); // 计算 CRC
+//             // 获取互斥锁
+//             if (xSemaphoreTake(xSerialMutex, portMAX_DELAY) == pdTRUE)
+//             {
+//                 Serial.write((uint8_t *)&motorPacket, sizeof(motorStatePackage)); // 发送数据
+//                 // 释放互斥锁
+//                 xSemaphoreGive(xSerialMutex);
+//             }
+//             vTaskDelayUntil(&xLastWakeTime, xPeriod);
+//         }
+//     }
+// }
 
 // 如果不想用 ESP-IDF 专用 API，可以用一个简单的循环数组
 static uint8_t rxRingBuffer[SERIAL_RING_BUFFER_SIZE];
@@ -82,16 +82,16 @@ static size_t rxCount = 0;
 void ringBufferWrite(uint8_t data)
 {
     size_t nextHead = (rxHead + 1) % SERIAL_RING_BUFFER_SIZE;
-    if (nextHead != rxTail)  // 未满
+    if (nextHead != rxTail) // 未满
     {
         rxRingBuffer[rxHead] = data;
         rxHead = nextHead;
     }
-    else  // 满了，丢弃旧数据（保留新数据）
+    else // 满了，丢弃旧数据（保留新数据）
     {
         rxRingBuffer[rxHead] = data;
         rxHead = nextHead;
-        rxTail = (rxTail + 1) % SERIAL_RING_BUFFER_SIZE;  // 移动尾指针，丢弃最旧的数据
+        rxTail = (rxTail + 1) % SERIAL_RING_BUFFER_SIZE; // 移动尾指针，丢弃最旧的数据
     }
 }
 
@@ -108,6 +108,10 @@ bool ringBufferRead(uint8_t *data)
 // 接收任务
 void serialRecTask(void *pvParameters)
 {
+    TickType_t xLastWakeTime;
+    const TickType_t xPeriod = pdMS_TO_TICKS(1); // 将 1ms 转换为 Tick 数 (即 1 个 Tick)
+    xLastWakeTime = xTaskGetTickCount();         // 初始化“上次唤醒时间”为当前时间
+
     uint8_t byte;
     const int MAX_PACKETS_PER_LOOP = 5; // 单次循环最多处理 5 个完整包，防止占 CPU 过久
 
@@ -160,7 +164,7 @@ void serialRecTask(void *pvParameters)
             }
         }
 
-        // 3. 主动让出 CPU，避免看门狗复位
-        vTaskDelay(pdMS_TO_TICKS(1));
+        // vTaskDelay(pdMS_TO_TICKS(1));
+        vTaskDelayUntil(&xLastWakeTime, xPeriod);
     }
 }

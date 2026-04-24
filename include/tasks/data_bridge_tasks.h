@@ -15,7 +15,7 @@ extern SerialCommandPackage latestCommand; // 最新接收到的命令
 extern unsigned long lastRecCmdTime; // ms
 
 void IMUTask(void *pvParameters);
-void canRecTask(void *pvParameters);
+// void canRecTask(void *pvParameters);
 void serialRecTask(void *pvParameters);
 
 #endif

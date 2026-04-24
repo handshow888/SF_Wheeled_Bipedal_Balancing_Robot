@@ -46,7 +46,7 @@ void sendCANCommand(uint32_t nodeID, uint32_t msgID, uint8_t *data);
 uint8_t recCANMessage(); // 返回电机id
 
 void sendMITCommand(uint8_t nodeID, MIT command);
-void disable(uint8_t nodeID);     // 电机失能
+void disableMotor(uint8_t nodeID);     // 电机失能
 void enableMotor(uint8_t nodeID); // 电机使能
 void zeroPos(uint8_t nodeID);     // 设置电机当前位置为零位
 float uint_to_float(int x_int, float x_min, float x_max, int bits);
