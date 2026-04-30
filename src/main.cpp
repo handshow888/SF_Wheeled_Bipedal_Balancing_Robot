@@ -54,7 +54,7 @@ void setup()
   Wire.begin(1, 2, 400000UL); // 初始化IIC
   Serial.begin(921600);       // 初始化调试串口
   mpu6050.begin();            // 初始化MPU陀螺仪
-  // mpu6050.setGyroOffsets(3.73, -1.59, -0.16);
+  // mpu6050.setGyroOffsets(0.71, 0.17, -1.40);
   ppm_init(); // 遥控器读取中断初始化
   CANInit();
   delay(1000);
@@ -73,7 +73,7 @@ void setup()
   /* USER CALIBRATE IMU START */
   // 静止平放时解注释获取imu校准矩阵，正常运行时注释
   // delay(2);
-  // mpu6050.calcGyroOffsets(true);
+  // mpu6050.calcGyroOffsets();
   // mpu6050.calibrateAccelerometer();
   /* USER CALIBRATE IMU END */
 }
@@ -91,6 +91,8 @@ void loop()
   isCmdRec();     // 检测上位机是否在线
   emergencyStopCheck();
   // CAN_Control();                                             // 控制关节电机
+  // Serial.printf("cmd: left:%.3f    right:%.3f        vel: left:%.3f    right:%.3f\n",
+  //               targetTorLeftWheel, targetTorRightWheel, motor2_vel, motor1_vel);
   sendMotorTargets(targetTorRightWheel, targetTorLeftWheel); // 发送控制轮毂电机的目标值
   // Serial.printf("v1:%.3f\tv2:%.3f\n", motor1_vel, motor2_vel);
   vTaskDelayUntil(&xLastWakeTime_loop, xPeriod_loop); // 周期控制
@@ -192,6 +194,8 @@ void handleRecCmd()
     default:
       break;
     }
+
+    // Serial.printf("cmd: left:%.3f\tright:%.3f\n", targetTorLeftWheel, targetTorRightWheel);
   }
 }
 
@@ -207,8 +211,10 @@ bool isCmdRec()
     // targetTorLeftFront = 0.0;
     targetTorLeftWheel = 0.0;
     targetTorRightWheel = 0.0;
+    // Serial.printf("offline\n");
     return false;
   }
+  // Serial.printf("online---\n");
   return true;
 }
 
@@ -229,8 +235,6 @@ void emergencyStopCheck()
   {
     if (!isJointMotorOn)
       enableJointMotors();
-    // targetTorLeftFront = 1.0;
-    // CAN_Control();
   }
 
   motorSwitchPackage packet;

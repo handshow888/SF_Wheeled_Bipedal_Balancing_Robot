@@ -168,31 +168,31 @@ void MPU6050::calibrateAccelerometer(uint16_t delayBefore, uint16_t delayAfter)
     float one_minus_cos = 1.0 - cos_a;
 
     // 旋转矩阵
-    // calibration_matrix[0][0] = cos_a + ux * ux * one_minus_cos;
-    // calibration_matrix[0][1] = ux * uy * one_minus_cos - uz * sin_a;
-    // calibration_matrix[0][2] = ux * uz * one_minus_cos + uy * sin_a;
+    calibration_matrix[0][0] = cos_a + ux * ux * one_minus_cos;
+    calibration_matrix[0][1] = ux * uy * one_minus_cos - uz * sin_a;
+    calibration_matrix[0][2] = ux * uz * one_minus_cos + uy * sin_a;
 
-    // calibration_matrix[1][0] = uy * ux * one_minus_cos + uz * sin_a;
-    // calibration_matrix[1][1] = cos_a + uy * uy * one_minus_cos;
-    // calibration_matrix[1][2] = uy * uz * one_minus_cos - ux * sin_a;
+    calibration_matrix[1][0] = uy * ux * one_minus_cos + uz * sin_a;
+    calibration_matrix[1][1] = cos_a + uy * uy * one_minus_cos;
+    calibration_matrix[1][2] = uy * uz * one_minus_cos - ux * sin_a;
 
-    // calibration_matrix[2][0] = uz * ux * one_minus_cos - uy * sin_a;
-    // calibration_matrix[2][1] = uz * uy * one_minus_cos + ux * sin_a;
-    // calibration_matrix[2][2] = cos_a + uz * uz * one_minus_cos;
+    calibration_matrix[2][0] = uz * ux * one_minus_cos - uy * sin_a;
+    calibration_matrix[2][1] = uz * uy * one_minus_cos + ux * sin_a;
+    calibration_matrix[2][2] = cos_a + uz * uz * one_minus_cos;
   }
 
-  // Serial.println("加速度计校准完成！");
-  // Serial.println("校准矩阵:");
-  // for (int i = 0; i < 3; i++)
-  // {
-  //   Serial.print("[");
-  //   for (int j = 0; j < 3; j++)
-  //   {
-  //     Serial.print(calibration_matrix[i][j], 6);
-  //     Serial.print(" ");
-  //   }
-  //   Serial.println("]");
-  // }
+  Serial.println("加速度计校准完成！");
+  Serial.println("校准矩阵:");
+  for (int i = 0; i < 3; i++)
+  {
+    Serial.print("[");
+    for (int j = 0; j < 3; j++)
+    {
+      Serial.print(calibration_matrix[i][j], 6);
+      Serial.print(" ");
+    }
+    Serial.println("]");
+  }
 
   delay(delayAfter);
 }
@@ -254,21 +254,21 @@ void MPU6050::applyCalibration()
   // update();
 
   // 应用加速度计校准
-  // float acc_x_temp = accX;
-  // float acc_y_temp = accY;
-  // float acc_z_temp = accZ;
+  float acc_x_temp = accX;
+  float acc_y_temp = accY;
+  float acc_z_temp = accZ;
 
-  // accX = calibration_matrix[0][0] * acc_x_temp +
-  //        calibration_matrix[0][1] * acc_y_temp +
-  //        calibration_matrix[0][2] * acc_z_temp;
+  accX = calibration_matrix[0][0] * acc_x_temp +
+         calibration_matrix[0][1] * acc_y_temp +
+         calibration_matrix[0][2] * acc_z_temp;
 
-  // accY = calibration_matrix[1][0] * acc_x_temp +
-  //        calibration_matrix[1][1] * acc_y_temp +
-  //        calibration_matrix[1][2] * acc_z_temp;
+  accY = calibration_matrix[1][0] * acc_x_temp +
+         calibration_matrix[1][1] * acc_y_temp +
+         calibration_matrix[1][2] * acc_z_temp;
 
-  // accZ = calibration_matrix[2][0] * acc_x_temp +
-  //        calibration_matrix[2][1] * acc_y_temp +
-  //        calibration_matrix[2][2] * acc_z_temp;
+  accZ = calibration_matrix[2][0] * acc_x_temp +
+         calibration_matrix[2][1] * acc_y_temp +
+         calibration_matrix[2][2] * acc_z_temp;
 
   // 应用陀螺仪校准
   gyroX -= gyroXoffset;
@@ -276,19 +276,19 @@ void MPU6050::applyCalibration()
   gyroZ -= gyroZoffset;
 
   // 陀螺仪也需要应用相同的旋转矩阵
-  // float gyro_x_temp = gyroX;
-  // float gyro_y_temp = gyroY;
-  // float gyro_z_temp = gyroZ;
+  float gyro_x_temp = gyroX;
+  float gyro_y_temp = gyroY;
+  float gyro_z_temp = gyroZ;
 
-  // gyroX = calibration_matrix[0][0] * gyro_x_temp +
-  //         calibration_matrix[0][1] * gyro_y_temp +
-  //         calibration_matrix[0][2] * gyro_z_temp;
+  gyroX = calibration_matrix[0][0] * gyro_x_temp +
+          calibration_matrix[0][1] * gyro_y_temp +
+          calibration_matrix[0][2] * gyro_z_temp;
 
-  // gyroY = calibration_matrix[1][0] * gyro_x_temp +
-  //         calibration_matrix[1][1] * gyro_y_temp +
-  //         calibration_matrix[1][2] * gyro_z_temp;
+  gyroY = calibration_matrix[1][0] * gyro_x_temp +
+          calibration_matrix[1][1] * gyro_y_temp +
+          calibration_matrix[1][2] * gyro_z_temp;
 
-  // gyroZ = calibration_matrix[2][0] * gyro_x_temp +
-  //         calibration_matrix[2][1] * gyro_y_temp +
-  //         calibration_matrix[2][2] * gyro_z_temp;
+  gyroZ = calibration_matrix[2][0] * gyro_x_temp +
+          calibration_matrix[2][1] * gyro_y_temp +
+          calibration_matrix[2][2] * gyro_z_temp;
 }
