@@ -10,6 +10,7 @@ void IMUTask(void *pvParameters)
     while (true)
     {
         mpu6050.update(false);
+        auto timestamp = micros();
 
         imuStatePackage imuPacket;
 
@@ -19,6 +20,7 @@ void IMUTask(void *pvParameters)
         imuPacket.gx = mpu6050.getGyroX();
         imuPacket.gy = mpu6050.getGyroY();
         imuPacket.gz = mpu6050.getGyroZ();
+        imuPacket.timestamp = timestamp;
         Append_CRC16_Check_Sum((uint8_t *)&imuPacket, sizeof(imuStatePackage)); // 计算 CRC
 
         // --- 串口写入保护 ---

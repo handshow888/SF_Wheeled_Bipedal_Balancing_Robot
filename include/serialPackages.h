@@ -12,6 +12,7 @@ typedef struct
     float gx;
     float gy;
     float gz;
+    unsigned long timestamp;
     uint16_t crc16 = 0xFFFF;
 } __attribute__((packed)) imuStatePackage;
 
